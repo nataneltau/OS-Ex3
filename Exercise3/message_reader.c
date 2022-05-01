@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include "mesage_slot.h"
+
+//TODO - If no channel has been set on the file descriptor, returns -1 and errno is set to EINVAL
+
+int main(int argc, char **argv){
+
+    int file_des_to_read;
+    int channel_id;
+    char message_buffer[DEFAULT_SIZE];
+    int mark_success;
+
+    if(argc != 3){//invalid input
+        errno = EINVAL;
+        fprintf( stderr, "%s\n", strerror(errno));
+        exit(1);
+    }//end of if
+
+    file_des_to_read = open(argv[1], O_WRONLY);
+
+    channel_id = atoi(argv[2]);
+
+    if(file_des_to_write == -1){//error in open file
+        fprintf( stderr, "%s\n", strerror(errno));
+        exit(1);
+    }
+
+    mark_success = ioctl(file_des_to_write, MSG_SLOT_CHANNEL, channel_id);
+
+    if(id_success < 0){
+        //TODO - print a error message as said in the task
+    }
+
+    mark_success = 0;
+
+    mark_success = read(file_des_to_read, message_buffer, DEFAULT_SIZE, 0);
+    if(mark_success <= 0){
+        //TODO - print a error message as said in the task
+    }
+    //now mark_success contain the length of the message written
+
+    close(file_des_to_write);
+
+    write(STDOUT_FILENO, message_buffer, mark_success);//check errors
+
+    fprintf(STDOUT_FILENO, )
+
+    return 0;
+
+
+
+}//end of function main
