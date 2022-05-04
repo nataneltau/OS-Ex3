@@ -12,6 +12,7 @@
 #include <linux/string.h>   /* for memset. NOTE - not string.h!*/
 #include <linux/uaccess.h>  /* for get_user and put_user */
 #include <linux/slab.h>
+#include <errno.h>
 
 MODULE_LICENSE("GPL");//like in exercise 7
 

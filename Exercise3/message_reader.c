@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>  /* ioctl */
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]){
 
     mark_success = 0;
 
-    mark_success = read(file_des_to_read, message_buffer, DEFAULT_SIZE, 0);
+    mark_success = read(file_des_to_read, message_buffer, DEFAULT_SIZE);
     if(mark_success <= 0){//error occurs in read()
         fprintf( stderr, "%s\n", strerror(errno));
         exit(1);

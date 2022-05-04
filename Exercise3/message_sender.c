@@ -1,12 +1,15 @@
+#include "message_slot.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>  /* ioctl */
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "message_slot.h"
+
 
 //TODO - If no channel has been set on the file descriptor, returns -1 and errno is set to EINVAL
 
@@ -15,7 +18,6 @@ int main(int argc, char *argv[]){
     int file_des_to_write;
     int channel_id;
     int message_pass_len;
-    char *message_to_pass;
     int mark_success;
 
     if(argc != 4){//invalid input
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    mark_success = write(file_des_to_write, argv[3], message_pass_len, 0);
+    mark_success = write(file_des_to_write, argv[3], message_pass_len);
     if(mark_success != message_pass_len){
         fprintf( stderr, "%s\n", strerror(errno));
         exit(1);
