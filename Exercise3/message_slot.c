@@ -30,7 +30,7 @@ MODULE_LICENSE("GPL");//like in exercise 7
 
 
 /*  credits: exercise 6 && 7
-    red black tree: https://www.geeksforgeeks.org/c-program-red-black-tree-insertion/
+    red black tree: https://www.programiz.com/dsa/red-black-tree
     free tree memory: https://stackoverflow.com/questions/9181146/freeing-memory-of-a-binary-tree-c
 */
 
@@ -46,267 +46,204 @@ MODULE_LICENSE("GPL");//like in exercise 7
 //________________________________________________________________________________________________________
 //________________________________________________________________________________________________________
 
-/** C implementation for
-    Red-Black Tree Insertion
-    This code is provided by
-    costheta_z **/
- 
-// Structure to represent each
-// node in a red-black tree - node are channels
+// Implementing Red-Black Tree in C
 
- 
-//FUNCTIONS OF THE RED BLACK TREE
 
-//__________________________________________________
-//__________________________________________________
 
-struct node* search_in_the_rbt(int x, struct node* n)
-{
-    if(n != NULL)
-    {
-        if(n->channel_id_num  == x)
-                return (n);
-        else if(n->channel_id_num > x)
-                search_in_the_rbt(x, n->l);
-        else
-                search_in_the_rbt(x, n->r);
+
+
+//struct rbNode *root = NULL;
+
+// Create a red-black tree
+struct rbNode *createNode(int channel_id_num) {
+    struct rbNode *newnode;
+    newnode = (struct rbNode *)kmalloc(sizeof(struct rbNode), GFP_KERNEL);
+
+    if(newnode == NULL){
+        return NULL;
     }
-    return NULL;
+
+    newnode->channel_id_num = channel_id_num;
+    newnode->message_len = 0;
+    newnode->color = RED;
+    newnode->link[0] = newnode->link[1] = NULL;
+    return newnode;
 }
 
+// Insert an node
+int insertion(minor *almost_root, int channel_id_num) {
+  struct rbNode **stack;
+  struct rbNode *ptr, *newnode, *xPtr, *yPtr;
+  int dir[98];
+  int ht = 0, index;
+  ptr = almost_root->channels;
 
+  stack = (struct rbNode **)kmalloc(sizeof(struct rbNode) * 98, GFP_KERNEL);
 
-// function to perform BST insertion of a node
-struct node* bst(struct node* trav,
-                      struct node* temp)
-{
-    // If the tree is empty,
-    // return a new node
-    if (trav == NULL)
-        return temp;
- 
-    // Otherwise recur down the tree
-    if (temp->channel_id_num < trav->channel_id_num)
-    {
-        trav->l = bst(trav->l, temp);
-        trav->l->p = trav;
+  if (!(almost_root->channels)) {
+    almost_root->channels = createNode(channel_id_num);
+    kfree(stack);
+
+    if(almost_root->channels == NULL){
+        return -1;
     }
-    else if (temp->channel_id_num > trav->channel_id_num)
-    {
-        trav->r = bst(trav->r, temp);
-        trav->r->p = trav;
+
+    return 0;
+  }
+
+  stack[ht] = almost_root->channels;
+  dir[ht++] = 0;
+  while (ptr != NULL) {
+    if (ptr->channel_id_num == channel_id_num) {
+      //printk("Duplicates Not Allowed!!\n");
+      return 0;
     }
- 
-    // Return the (unchanged) node pointer
-    return trav;
-}
- 
-// Function performing right rotation
-// of the passed node
-void rightrotate(struct node *root, struct node* temp)
-{
-    struct node* left = temp->l;
-    temp->l = left->r;
-    if (temp->l)
-        temp->l->p = temp;
-    left->p = temp->p;
-    if (!temp->p)
-        root = left;
-    else if (temp == temp->p->l)
-        temp->p->l = left;
-    else
-        temp->p->r = left;
-    left->r = temp;
-    temp->p = left;
-}
- 
-// Function performing left rotation
-// of the passed node
-void leftrotate(struct node *root, struct node* temp)
-{
-    struct node* right = temp->r;
-    temp->r = right->l;
-    if (temp->r)
-        temp->r->p = temp;
-    right->p = temp->p;
-    if (!temp->p)
-        root = right;
-    else if (temp == temp->p->l)
-        temp->p->l = right;
-    else
-        temp->p->r = right;
-    right->l = temp;
-    temp->p = right;
-}
- 
-// This function fixes violations
-// caused by BST insertion
-void fixup(struct node* root, struct node* pt)
-{
-    struct node* parent_pt = NULL;
-    struct node* grand_parent_pt = NULL;
-    int t;
- 
-    while ((pt != root) && (pt->c != 0)
-           && (pt->p->c == 1))
-    {
-        parent_pt = pt->p;
-        grand_parent_pt = pt->p->p;
- 
-        /*  Case : A
-             Parent of pt is left child
-             of Grand-parent of
-           pt */
-        if (parent_pt == grand_parent_pt->l)
-        {
- 
-            struct node* uncle_pt = grand_parent_pt->r;
- 
-            /* Case : 1
-                The uncle of pt is also red
-                Only Recoloring required */
-            if (uncle_pt != NULL && uncle_pt->c == 1)
-            {
-                grand_parent_pt->c = 1;
-                parent_pt->c = 0;
-                uncle_pt->c = 0;
-                pt = grand_parent_pt;
-            }
- 
-            else {
- 
-                /* Case : 2
-                     pt is right child of its parent
-                     Left-rotation required */
-                if (pt == parent_pt->r) {
-                    leftrotate(root, parent_pt);
-                    pt = parent_pt;
-                    parent_pt = pt->p;
-                }
- 
-                /* Case : 3
-                     pt is left child of its parent
-                     Right-rotation required */
-                rightrotate(root, grand_parent_pt);
-                t = parent_pt->c;
-                parent_pt->c = grand_parent_pt->c;
-                grand_parent_pt->c = t;
-                pt = parent_pt;
-            }
+    index = (channel_id_num - ptr->channel_id_num) > 0 ? 1 : 0;
+    stack[ht] = ptr;
+    ptr = ptr->link[index];
+    dir[ht++] = index;
+  }
+  stack[ht - 1]->link[index] = newnode = createNode(channel_id_num);
+
+    if(newnode == NULL){
+        return -1;
+    }
+
+  while ((ht >= 3) && (stack[ht - 1]->color == RED)) {
+    if (dir[ht - 2] == 0) {
+      yPtr = stack[ht - 2]->link[1];
+      if (yPtr != NULL && yPtr->color == RED) {
+        stack[ht - 2]->color = RED;
+        stack[ht - 1]->color = yPtr->color = BLACK;
+        ht = ht - 2;
+      } else {
+        if (dir[ht - 1] == 0) {
+          yPtr = stack[ht - 1];
+        } else {
+          xPtr = stack[ht - 1];
+          yPtr = xPtr->link[1];
+          xPtr->link[1] = yPtr->link[0];
+          yPtr->link[0] = xPtr;
+          stack[ht - 2]->link[0] = yPtr;
         }
- 
-        /* Case : B
-             Parent of pt is right
-             child of Grand-parent of
-           pt */
-        else {
-            struct node* uncle_pt = grand_parent_pt->l;
- 
-            /*  Case : 1
-                The uncle of pt is also red
-                Only Recoloring required */
-            if ((uncle_pt != NULL) && (uncle_pt->c == 1))
-            {
-                grand_parent_pt->c = 1;
-                parent_pt->c = 0;
-                uncle_pt->c = 0;
-                pt = grand_parent_pt;
-            }
-            else {
-                /* Case : 2
-                   pt is left child of its parent
-                   Right-rotation required */
-                if (pt == parent_pt->l) {
-                    rightrotate(root, parent_pt);
-                    pt = parent_pt;
-                    parent_pt = pt->p;
-                }
- 
-                /* Case : 3
-                     pt is right child of its parent
-                     Left-rotation required */
-                leftrotate(root, grand_parent_pt);
-                t = parent_pt->c;
-                parent_pt->c = grand_parent_pt->c;
-                grand_parent_pt->c = t;
-                pt = parent_pt;
-            }
+        xPtr = stack[ht - 2];
+        xPtr->color = RED;
+        yPtr->color = BLACK;
+        xPtr->link[0] = yPtr->link[1];
+        yPtr->link[1] = xPtr;
+        if (xPtr == almost_root->channels) {
+          almost_root->channels = yPtr;
+        } else {
+          stack[ht - 3]->link[dir[ht - 3]] = yPtr;
         }
+        break;
+      }
+    } else {
+      yPtr = stack[ht - 2]->link[0];
+      if ((yPtr != NULL) && (yPtr->color == RED)) {
+        stack[ht - 2]->color = RED;
+        stack[ht - 1]->color = yPtr->color = BLACK;
+        ht = ht - 2;
+      } else {
+        if (dir[ht - 1] == 1) {
+          yPtr = stack[ht - 1];
+        } else {
+          xPtr = stack[ht - 1];
+          yPtr = xPtr->link[0];
+          xPtr->link[0] = yPtr->link[1];
+          yPtr->link[1] = xPtr;
+          stack[ht - 2]->link[1] = yPtr;
+        }
+        xPtr = stack[ht - 2];
+        yPtr->color = BLACK;
+        xPtr->color = RED;
+        xPtr->link[1] = yPtr->link[0];
+        yPtr->link[0] = xPtr;
+        if (xPtr == almost_root->channels) {
+          almost_root->channels = yPtr;
+        } else {
+          stack[ht - 3]->link[dir[ht - 3]] = yPtr;
+        }
+        break;
+      }
     }
- 
-    root->c = 0;
+  }
+  almost_root->channels->color = BLACK;
+  kfree(stack);
+  return 0;
+
 }
- 
-// Function to print inorder traversal
-// of the fixated tree
-/*void inorder(struct node* trav)
-{
-    if (trav == NULL)
-        return;
-    inorder(trav->l);
-    printf("%d ", trav->channel_id_num);
-    inorder(trav->r);
+
+
+// Print the inorder traversal of the tree
+/*void inorderTraversal(struct rbNode *node) {
+  if (node) {
+    inorderTraversal(node->link[0]);
+    printf("%d  ", node->channel_id_num);
+    inorderTraversal(node->link[1]);
+  }
+  return;
 }*/
 
-void realese_tree(struct node* trav){
+void realese_tree(rbNode* trav){
   if(trav == NULL){
     return;
   }
 
-  realese_tree(trav->l);
-  realese_tree(trav->r);
+  realese_tree(trav->link[0]);
+  realese_tree(trav->link[1]);
 
   kfree(trav);
 
 }
 
-
-
-/*void insert_and_fix(struct node* root, struct node* node_to_insert){
-    // calling function that performs bst insertion of
-    // this newly created node
-    root = bst(root, node_to_insert);
- 
-    // calling function to preserve properties of rb
-    // tree
-    fixup(root, node_to_insert);
-}*/
- 
-// driver code
-/*int main()
+struct rbNode* search_in_the_rbt(int x, struct rbNode* n)
 {
-    int n = 7;
-    int a[7] = { 7, 6, 5, 4, 3, 2, 1 };
- 
-    for (int i = 0; i < n; i++) {
- 
-        // allocating memory to the node and initializing:
-        // 1. color as red
-        // 2. parent, left and right pointers as NULL
-        // 3. data as i-th value in the array
-        struct node* temp
-            = (struct node*)malloc(sizeof(struct node));
-        temp->r = NULL;
-        temp->l = NULL;
-        temp->p = NULL;
-        temp->channel_id_num = a[i];
-        temp->c = 1;
- 
-        // calling function that performs bst insertion of
-        // this newly created node
-        root = bst(root, temp);
- 
-        // calling function to preserve properties of rb
-        // tree
-        fixup(root, temp);
+    if(n != NULL)
+    {
+        if(n->channel_id_num  == x)
+                return (n);
+        else if(n->channel_id_num > x)//go left
+                return search_in_the_rbt(x, n->link[0]);
+        else//go right
+                return search_in_the_rbt(x, n->link[1]);
     }
- 
-    printf("Inorder Traversal of Created Tree\n");
-    inorder(root);
- 
-    return 0;
-}*/
+    return NULL;
+}
 
+// Driver code
+/*int main() {
+  int ch, data;
+  while (1) {
+    printf("1. Insertion\t2. Deletion\n");
+    printf("3. Traverse\t4. Exit");
+    printf("\nEnter your choice:");
+    scanf("%d", &ch);
+    switch (ch) {
+      case 1:
+        printf("Enter the element to insert:");
+        scanf("%d", &data);
+        insertion(data);
+        break;
+      case 2:
+        printf("Enter the element to delete:");
+        scanf("%d", &data);
+        deletion(data);
+        break;
+      case 3:
+        inorderTraversal(root);
+        printf("\n");
+        break;
+      case 4:
+        exit(0);
+      default:
+        printf("Not available\n");
+        break;
+    }
+    printf("\n");
+  }
+  return 0;
+}*/
 
 //________________________________________________________________________________________________________
 //________________________________________________________________________________________________________
@@ -329,7 +266,8 @@ global_root arr_of_minor[257];
 
 static int device_open( struct inode* inode, struct file*  file ){
     minor *minor_file;
-    node* root = NULL;
+    //rbNode* temp;
+    //rbNode* root = NULL;
 
     if((arr_of_minor[iminor(inode)].minor_pointer) != NULL){//already created data
         file->private_data = (void *)(arr_of_minor[iminor(inode)].minor_pointer);
@@ -337,33 +275,35 @@ static int device_open( struct inode* inode, struct file*  file ){
         return SUCCESS;
     }
     
-    minor_file = kmalloc(sizeof(struct minor), GFP_KERNEL);
+    minor_file = (minor *)kmalloc(sizeof(struct minor), GFP_KERNEL);
 
     if(minor_file == NULL){
         return -ENOMEM;
     }
 
     minor_file->minor_num = iminor(inode);
+    minor_file->channels = NULL;
     arr_of_minor[minor_file->minor_num].minor_pointer = minor_file;
     //arr_of_minor[minor_file->minor_num]->counter = 1;
-    minor_file->channels = kmalloc(sizeof(struct node), GFP_KERNEL);
+    //minor_file->channels = kmalloc(sizeof(struct rbNode), GFP_KERNEL);
 
-    if(minor_file->channels == NULL){
+    /*if(minor_file->channels == NULL){
         return -ENOMEM;
-    }
+    }*/
 
-    minor_file->channels->r = NULL;
-    minor_file->channels->l =NULL;
-    minor_file->channels->p = NULL;
-    minor_file->channels->channel_id_num = 0;
-    minor_file->last_channel = 0;
-    minor_file->channels->message_len = 0;
-    minor_file->channels->c = 1;
+    /*temp = createNode(0);
 
+    minor_file->channels = temp;
 
     root = bst(root, minor_file->channels);
 
-    fixup(root, minor_file->channels);
+    fixup(root, minor_file->channels);*///need that?
+
+    if(insertion(minor_file, 0) < 0){
+        return -ENOMEM;
+    }
+
+    minor_file->last_channel = 0;
 
     file->private_data = (void *)minor_file;
 
@@ -397,11 +337,11 @@ static int device_release( struct inode* inode, struct file*  file){
 }//end of function device_release
 
 
-static ssize_t device_read( struct file* file, char __user* buffer, size_t length, loff_t* offset ){
+static ssize_t device_read( struct file* file, char __user* buffer, size_t length, loff_t* offset){
 
-    struct node* channel;
-    int i;
-    struct node* root;
+    struct rbNode* channel;
+    int i, num;
+    struct rbNode* root;
     int channel_id;
     minor *minor_file;
     char *the_message;
@@ -433,13 +373,14 @@ static ssize_t device_read( struct file* file, char __user* buffer, size_t lengt
 
     i = 0;
     the_message = channel->message;
+    num = channel->message_len;
 
-    while(i<length){
+    while(i<num){
 
-        if (put_user(the_message[i], buffer+i) != 0) {//check if put_user failed
-            return -EFAULT;
-		}
-        i++;
+      if (put_user(the_message[i], buffer+i) != 0) {//check if put_user failed
+        return -EFAULT;
+		  }
+      i++;
 
     }//end of while
 
@@ -448,9 +389,9 @@ static ssize_t device_read( struct file* file, char __user* buffer, size_t lengt
 
 static ssize_t device_write( struct file* file, const char __user* buffer, size_t length, loff_t* offset){
 
-    struct node* root;
+    struct rbNode* root;
     int channel_id;
-    node* channel;
+    rbNode* channel;
     minor *minor_file;
     char *safe_buff;
     int i = 0;
@@ -486,6 +427,7 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
         if(get_user(safe_buff[i], &buffer[i]) != 0){
             return -EFAULT;
         }
+        i++;
     }
 
     i = 0;
@@ -519,7 +461,7 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
 static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, unsigned long  ioctl_param){
 
     minor *minor_file;
-    node *channel;
+    rbNode *channel;
 
     minor_file = (minor *)(file->private_data);
 
@@ -537,8 +479,18 @@ static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, un
         return SUCCESS;
     }
 
+
+    if(insertion(minor_file, ioctl_param) < 0){
+        return -ENOMEM;
+    }
     
-    channel = kmalloc(sizeof(node), GFP_KERNEL);
+
+    channel = search_in_the_rbt(ioctl_param, minor_file->channels);
+
+    channel->message = kmalloc(2 * sizeof(char *), GFP_KERNEL);
+
+
+    /*channel = kmalloc(sizeof(node), GFP_KERNEL);
 
     if(channel == NULL){
         return -ENOMEM;
@@ -549,13 +501,13 @@ static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, un
     channel->p = NULL;
     channel->channel_id_num = ioctl_param;
     channel->message_len = 0;
-    channel->c = 1;
+    channel->c = 1;*/
 
     minor_file->last_channel = ioctl_param;
 
-    minor_file->channels = bst(minor_file->channels, channel);
+    //minor_file->channels = bst(minor_file->channels, channel);
 
-    fixup(minor_file->channels, channel);//check for sure if after that file->private_data->channels point to the root
+    //fixup(minor_file->channels, channel);//check for sure if after that file->private_data->channels point to the root
 
     return SUCCESS;
 

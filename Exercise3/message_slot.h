@@ -5,6 +5,8 @@
 
 
 #define MAJOR_NUM 235
+#define RED 0
+#define BLACK 1
 
 // Set the message of the device driver
 #define MSG_SLOT_CHANNEL _IOW(MAJOR_NUM, 0, unsigned int)
@@ -14,7 +16,18 @@
 #define DEVICE_RANGE_NAME "message_slot"
 
 
-typedef struct node {
+
+
+typedef struct rbNode {
+  int color;
+  int channel_id_num; // data is minor number
+  char *message;
+  int message_len;
+  struct rbNode *link[2];
+}rbNode;
+
+
+/*typedef struct node {
     int channel_id_num; // data is minor number
     char *message;
     int message_len;
@@ -22,13 +35,12 @@ typedef struct node {
     struct node* p; // parent
     struct node* r; // right-child
     struct node* l; // left child
-}node;
+}node;*/
  
-
 
 typedef struct minor{
   int minor_num;//the number of the channel id
-  struct node *channels;//all the channels connected to this minor number
+  struct rbNode *channels;//all the channels connected to this minor number
   int last_channel;//the last channel inserted by device_ioctl
 }minor;
 
