@@ -36,6 +36,9 @@ MODULE_LICENSE("GPL");//like in exercise 7
 
 
 
+// global array for all the trees
+
+global_root arr_of_minor[257];
 
 
 
@@ -254,10 +257,6 @@ struct rbNode* search_in_the_rbt(int x, struct rbNode* n)
 
 
 
-
-// global array for all the trees
-
-global_root arr_of_minor[257];
 
 
 //global_root *arr_of_minor = (global_root*)kmalloc(sizeof(global_root)*257, GFP_KERNEL);
