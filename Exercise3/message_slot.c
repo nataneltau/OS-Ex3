@@ -67,6 +67,7 @@ struct rbNode *createNode(int channel_id_num) {
     }
 
     newnode->channel_id_num = channel_id_num;
+    newnode->message = kmalloc(2 * sizeof(char *), GFP_KERNEL);
     newnode->message_len = 0;
     newnode->color = RED;
     newnode->link[0] = newnode->link[1] = NULL;
@@ -74,27 +75,27 @@ struct rbNode *createNode(int channel_id_num) {
 }
 
 // Insert an node
-int insertion(global_root *almost_root, int channel_id_num) {
+int insertion(minor *almost_root, int channel_id_num) {
   struct rbNode **stack;
   struct rbNode *ptr, *newnode, *xPtr, *yPtr;
   int dir[98];
   int ht = 0, index;
-  ptr = almost_root->tree_root;
+  ptr = almost_root->channels;
 
   stack = (struct rbNode **)kmalloc(sizeof(struct rbNode) * 98, GFP_KERNEL);
 
-  if (!(almost_root->tree_root)) {
-    almost_root->tree_root = createNode(channel_id_num);
+  if (!(almost_root->channels)) {
+    almost_root->channels = createNode(channel_id_num);
     kfree(stack);
 
-    if(almost_root->tree_root == NULL){
+    if(almost_root->channels == NULL){
         return -1;
     }
 
     return 0;
   }
 
-  stack[ht] = almost_root->tree_root;
+  stack[ht] = almost_root->channels;
   dir[ht++] = 0;
   while (ptr != NULL) {
     if (ptr->channel_id_num == channel_id_num) {
@@ -134,8 +135,8 @@ int insertion(global_root *almost_root, int channel_id_num) {
         yPtr->color = BLACK;
         xPtr->link[0] = yPtr->link[1];
         yPtr->link[1] = xPtr;
-        if (xPtr == almost_root->tree_root) {
-          almost_root->tree_root = yPtr;
+        if (xPtr == almost_root->channels) {
+          almost_root->channels = yPtr;
         } else {
           stack[ht - 3]->link[dir[ht - 3]] = yPtr;
         }
@@ -162,8 +163,8 @@ int insertion(global_root *almost_root, int channel_id_num) {
         xPtr->color = RED;
         xPtr->link[1] = yPtr->link[0];
         yPtr->link[0] = xPtr;
-        if (xPtr == almost_root->tree_root) {
-          almost_root->tree_root = yPtr;
+        if (xPtr == almost_root->channels) {
+          almost_root->channels = yPtr;
         } else {
           stack[ht - 3]->link[dir[ht - 3]] = yPtr;
         }
@@ -171,7 +172,7 @@ int insertion(global_root *almost_root, int channel_id_num) {
       }
     }
   }
-  almost_root->tree_root->color = BLACK;
+  almost_root->channels->color = BLACK;
   kfree(stack);
   return 0;
 
@@ -268,11 +269,11 @@ static int device_open( struct inode* inode, struct file*  file ){
     //rbNode* temp;
     //rbNode* root = NULL;
 
-    /*if((arr_of_minor[iminor(inode)].minor_pointer) != NULL){//already created data
+    if((arr_of_minor[iminor(inode)].minor_pointer) != NULL){//already created data
         file->private_data = (void *)(arr_of_minor[iminor(inode)].minor_pointer);
         //arr_of_minor[iminor(inode)]->counter++;
         return SUCCESS;
-    }*/
+    }
     
     minor_file = (minor *)kmalloc(sizeof(struct minor), GFP_KERNEL);
 
@@ -281,8 +282,8 @@ static int device_open( struct inode* inode, struct file*  file ){
     }
 
     minor_file->minor_num = iminor(inode);
-    minor_file->channel = createNode(0);
-    //arr_of_minor[minor_file->minor_num].minor_pointer = minor_file;
+    minor_file->channels = NULL;
+    arr_of_minor[minor_file->minor_num].minor_pointer = minor_file;
     //arr_of_minor[minor_file->minor_num]->counter = 1;
     //minor_file->channels = kmalloc(sizeof(struct rbNode), GFP_KERNEL);
 
@@ -298,9 +299,9 @@ static int device_open( struct inode* inode, struct file*  file ){
 
     fixup(root, minor_file->channels);*///need that?
 
-    /*if(insertion(minor_file, 0) < 0){
+    if(insertion(minor_file, 0) < 0){
         return -ENOMEM;
-    }*/
+    }
 
     minor_file->last_channel = 0;
 
@@ -327,9 +328,9 @@ static int device_release( struct inode* inode, struct file*  file){
         //return SUCCESS;
     //}
 
-    realese_tree((arr_of_minor[temp].tree_root));
+    //realese_tree((arr_of_minor[temp].minor_pointer));
     //kfree(arr_of_minor[temp].minor_pointer);
-    arr_of_minor[temp].tree_root = NULL;
+    //arr_of_minor[temp].minor_pointer = NULL;
 
     return SUCCESS;
 
@@ -355,7 +356,7 @@ static ssize_t device_read( struct file* file, char __user* buffer, size_t lengt
     }
 
     
-    channel = minor_file->channel;
+    channel = search_in_the_rbt(channel_id ,minor_file->channels);
 
     if(channel == NULL){
         return -EINVAL;
@@ -414,7 +415,7 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
         return -ENOMEM;
     }
 
-    channel = minor_file->channel;
+    channel = search_in_the_rbt(channel_id ,minor_file->channels);
 
     if(channel == NULL){
         return -EINVAL;
@@ -460,7 +461,7 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
 static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, unsigned long  ioctl_param){
 
     minor *minor_file;
-    rbNode *channeli;
+    //rbNode *channel;
 
     minor_file = (minor *)(file->private_data);
 
@@ -473,38 +474,31 @@ static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, un
         return -EINVAL;
     }
 
-    /*if(search_in_the_rbt(ioctl_param, minor_file->channels) != NULL){//there is already a node in the tree with this id
-        minor_file->last_channeli = ioctl_param;
+    if(search_in_the_rbt(ioctl_param, arr_of_minor[minor_file->minor_num].minor_pointer->channels) != NULL){//there is already a node in the tree with this id
+        minor_file->last_channel = ioctl_param;
         return SUCCESS;
-    }*/
+    }
 
-    if((arr_of_minor[minor_file->minor_num].tree_root) == NULL){
-      if(insertion(&arr_of_minor[minor_file->minor_num], ioctl_param) < 0){
+    /*if((arr_of_minor[minor_file->minor_num].minor_pointer) == NULL){
+      if(insertion(arr_of_minor[minor_file->minor_num].minor_pointer, ioctl_param) < 0){
         return -ENOMEM;
       }
 
       minor_file->last_channel = ioctl_param;
-      minor_file->channel = arr_of_minor[minor_file->minor_num].tree_root;
+      //minor_file->channels = arr_of_minor[minor_file->minor_num].minor_pointer;
 
       return SUCCESS;
 
-    }
+    }*/
 
-    channeli = search_in_the_rbt(ioctl_param, arr_of_minor[minor_file->minor_num].tree_root);
 
-    if(channeli == NULL){
-
-      if(insertion(&arr_of_minor[minor_file->minor_num], ioctl_param) < 0){
+    if(insertion(minor_file, ioctl_param) < 0){
         return -ENOMEM;
-      }
-
-      channeli = search_in_the_rbt(ioctl_param, arr_of_minor[minor_file->minor_num].tree_root);
-
-      channeli->message = kmalloc(2 * sizeof(char *), GFP_KERNEL);
-
     }
 
-    minor_file->channel = channeli;
+    minor_file->last_channel = ioctl_param;
+
+    
 
     //channel = search_in_the_rbt(ioctl_param, minor_file->channels);
 
@@ -524,7 +518,6 @@ static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, un
     channel->message_len = 0;
     channel->c = 1;*/
 
-    minor_file->last_channel = ioctl_param;
 
     //minor_file->channels = bst(minor_file->channels, channel);
 
@@ -568,12 +561,12 @@ static int __init simple_init(void){
     }//end of if
 
     for(i =0; i <257; i++){
-        if(arr_of_minor[i].tree_root != NULL){
+        if(arr_of_minor[i].minor_pointer != NULL){
 
-            realese_tree(arr_of_minor[i].tree_root);//sending the root of each tree for each minor number that exist
+            realese_tree(arr_of_minor[i].minor_pointer->channels);//sending the root of each tree for each minor number that exist
 
-            //kfree(arr_of_minor[i].minor_pointer);
-            arr_of_minor[i].tree_root = NULL;
+            kfree(arr_of_minor[i].minor_pointer);
+            arr_of_minor[i].minor_pointer = NULL;
 
         }//end of if
 
@@ -591,12 +584,12 @@ static void __exit simple_cleanup(void)
 
     for(i =0; i<257; i++){
         
-        if(arr_of_minor[i].tree_root != NULL){
+        if(arr_of_minor[i].minor_pointer != NULL){
 
-            realese_tree(arr_of_minor[i].tree_root);//sending the root of each tree for each minor number that exist
+            realese_tree(arr_of_minor[i].minor_pointer->channels);//sending the root of each tree for each minor number that exist
 
-            //kfree(arr_of_minor[i].minor_pointer);
-            arr_of_minor[i].tree_root = NULL;
+            kfree(arr_of_minor[i].minor_pointer);
+            arr_of_minor[i].minor_pointer = NULL;
 
         }//end of if
 
