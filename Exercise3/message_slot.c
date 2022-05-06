@@ -477,7 +477,7 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
     channel = search_in_the_rbt(channel_id, root);
 
     if(channel == NULL){
-        return -ENOMEM;
+        return -EINVAL;
     }
 
     i=0;
