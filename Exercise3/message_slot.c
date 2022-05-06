@@ -4,17 +4,29 @@
 #define MODULE
 
 
-#include "message_slot.h"
-#include <stdint.h>
+/*#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>*/
+
 #include <linux/kernel.h>   /* We're doing kernel work */
 #include <linux/module.h>   /* Specifically, a module */
 #include <linux/fs.h>       /* for register_chrdev */
-#include <linux/string.h>   /* for memset. NOTE - not string.h!*/
 #include <linux/uaccess.h>  /* for get_user and put_user */
-#include <linux/slab.h>
-#include <errno.h>
+#include <linux/string.h>   /* for memset. NOTE - not string.h!*/
+#include <linux/slab.h> /* for memory use*/
+
+//#include <linux/errno.h>
+//#include <linux/kernel.h>   /* We're doing kernel work */
+//#include <linux/module.h>   /* Specifically, a module */
+//#include <linux/fs.h>       /* for register_chrdev */
+//#include <linux/string.h>   /* for memset. NOTE - not string.h!*/
+//#include <linux/uaccess.h>  /* for get_user and put_user */
+//#include <linux/slab.h>
+
 
 MODULE_LICENSE("GPL");//like in exercise 7
+
+#include "message_slot.h"
 
 
 /*  credits: exercise 6 && 7
@@ -23,22 +35,10 @@ MODULE_LICENSE("GPL");//like in exercise 7
 */
 
 
-// This structure will hold the functions to be called
-// when a process does something to the device we created
-struct file_operations Fops =
-{
-  .owner	      = THIS_MODULE, // Required for correct count of module usage. This prevents the module from being removed while used.
-  .read           = device_read,
-  .write          = device_write,
-  .open           = device_open,
-  .release        = device_release,
-};
 
-struct minor{
-  int minor_num;//the number of the channel id
-  struct node channels;//all the channels connected to this minor number
-  int last_channel;//the last channel inserted by device_ioctl
-}
+
+
+
 
 //________________________________________________________________________________________________________
 //________________________________________________________________________________________________________
@@ -53,21 +53,28 @@ struct minor{
  
 // Structure to represent each
 // node in a red-black tree - node are channels
-struct node {
-    int channel_id_num; // data is minor number
-    char *message;
-    int message_len;
-    int c; // 1-red, 0-black
-    struct node* p; // parent
-    struct node* r; // right-child
-    struct node* l; // left child
-};
- 
+
  
 //FUNCTIONS OF THE RED BLACK TREE
 
 //__________________________________________________
 //__________________________________________________
+
+struct node* search_in_the_rbt(int x, struct node* n)
+{
+    if(n != NULL)
+    {
+        if(n->channel_id_num  == x)
+                return (n);
+        else if(n->channel_id_num > x)
+                search_in_the_rbt(x, n->l);
+        else
+                search_in_the_rbt(x, n->r);
+    }
+    return NULL;
+}
+
+
 
 // function to perform BST insertion of a node
 struct node* bst(struct node* trav,
@@ -96,7 +103,7 @@ struct node* bst(struct node* trav,
  
 // Function performing right rotation
 // of the passed node
-void rightrotate(struct node* temp)
+void rightrotate(struct node *root, struct node* temp)
 {
     struct node* left = temp->l;
     temp->l = left->r;
@@ -115,7 +122,7 @@ void rightrotate(struct node* temp)
  
 // Function performing left rotation
 // of the passed node
-void leftrotate(struct node* temp)
+void leftrotate(struct node *root, struct node* temp)
 {
     struct node* right = temp->r;
     temp->r = right->l;
@@ -138,6 +145,7 @@ void fixup(struct node* root, struct node* pt)
 {
     struct node* parent_pt = NULL;
     struct node* grand_parent_pt = NULL;
+    int t;
  
     while ((pt != root) && (pt->c != 0)
            && (pt->p->c == 1))
@@ -171,7 +179,7 @@ void fixup(struct node* root, struct node* pt)
                      pt is right child of its parent
                      Left-rotation required */
                 if (pt == parent_pt->r) {
-                    leftrotate(parent_pt);
+                    leftrotate(root, parent_pt);
                     pt = parent_pt;
                     parent_pt = pt->p;
                 }
@@ -179,8 +187,8 @@ void fixup(struct node* root, struct node* pt)
                 /* Case : 3
                      pt is left child of its parent
                      Right-rotation required */
-                rightrotate(grand_parent_pt);
-                int t = parent_pt->c;
+                rightrotate(root, grand_parent_pt);
+                t = parent_pt->c;
                 parent_pt->c = grand_parent_pt->c;
                 grand_parent_pt->c = t;
                 pt = parent_pt;
@@ -209,7 +217,7 @@ void fixup(struct node* root, struct node* pt)
                    pt is left child of its parent
                    Right-rotation required */
                 if (pt == parent_pt->l) {
-                    rightrotate(parent_pt);
+                    rightrotate(root, parent_pt);
                     pt = parent_pt;
                     parent_pt = pt->p;
                 }
@@ -217,8 +225,8 @@ void fixup(struct node* root, struct node* pt)
                 /* Case : 3
                      pt is right child of its parent
                      Left-rotation required */
-                leftrotate(grand_parent_pt);
-                int t = parent_pt->c;
+                leftrotate(root, grand_parent_pt);
+                t = parent_pt->c;
                 parent_pt->c = grand_parent_pt->c;
                 grand_parent_pt->c = t;
                 pt = parent_pt;
@@ -231,14 +239,14 @@ void fixup(struct node* root, struct node* pt)
  
 // Function to print inorder traversal
 // of the fixated tree
-void inorder(struct node* trav)
+/*void inorder(struct node* trav)
 {
     if (trav == NULL)
         return;
     inorder(trav->l);
     printf("%d ", trav->channel_id_num);
     inorder(trav->r);
-}
+}*/
 
 void realese_tree(struct node* trav){
   if(trav == NULL){
@@ -252,19 +260,6 @@ void realese_tree(struct node* trav){
 
 }
 
-struct node* search(int x, node* n)
-{
-    if(n != NULL)
-    {
-        if(n.channel_id_num  == x)
-                return (n)
-        else if(n.channel_id_num > x)
-                search(x, n.l)
-        else
-                search(x, n.r)
-    }
-    return NULL;
-}
 
 
 /*void insert_and_fix(struct node* root, struct node* node_to_insert){
@@ -324,41 +319,37 @@ struct node* search(int x, node* n)
 
 
 // global array for all the trees
-struct global_root{
-    struct minor* minor_pointer;
-    //int counter; //should add? it's neccerey if there is several files with the same minor num, that way device_release with not make bug, only add if it make a bug
-}
-
 
 global_root arr_of_minor[257];
 
 
+//global_root *arr_of_minor = (global_root*)kmalloc(sizeof(global_root)*257, GFP_KERNEL);
+
+
 
 static int device_open( struct inode* inode, struct file*  file ){
-    struct minor *minor_file;
-    struct node* root = NULL;
+    minor *minor_file;
+    node* root = NULL;
 
-    if(arr_of_minor[iminor(inode)] != NULL){//already created data
-        file->private_data = (void *)arr_of_minor[iminor(inode)]->minor_pointer;
+    if((arr_of_minor[iminor(inode)].minor_pointer) != NULL){//already created data
+        file->private_data = (void *)(arr_of_minor[iminor(inode)].minor_pointer);
         //arr_of_minor[iminor(inode)]->counter++;
         return SUCCESS;
     }
     
-    minor_file = kmalloc(sizeof(minor), GFP_KERNEL);
+    minor_file = kmalloc(sizeof(struct minor), GFP_KERNEL);
 
     if(minor_file == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
     minor_file->minor_num = iminor(inode);
-    arr_of_minor[minor_file->minor_num] = minor_file;
+    arr_of_minor[minor_file->minor_num].minor_pointer = minor_file;
     //arr_of_minor[minor_file->minor_num]->counter = 1;
-    minor_file->channels = kmalloc(sizeof(node), GFP_KERNEL);
+    minor_file->channels = kmalloc(sizeof(struct node), GFP_KERNEL);
 
     if(minor_file->channels == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
     minor_file->channels->r = NULL;
@@ -382,11 +373,14 @@ static int device_open( struct inode* inode, struct file*  file ){
 
 static int device_release( struct inode* inode, struct file*  file){
 
-    int temp = (int)file->private_data->minor_num;
+    minor *minor_file;
+    int temp;
+
+    minor_file = (minor *)(file->private_data);
+    temp = minor_file->minor_num;
 
     if(temp != iminor(inode)){
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
     //if(arr_of_minor[temp]->couner > 1){
@@ -394,9 +388,9 @@ static int device_release( struct inode* inode, struct file*  file){
         //return SUCCESS;
     //}
 
-    realese_tree(file->private_data->channels);
-    kfree(arr_of_minor[temp]);
-    arr_of_minor[temp] = NULL;
+    realese_tree((minor_file->channels));
+    kfree(arr_of_minor[temp].minor_pointer);
+    arr_of_minor[temp].minor_pointer = NULL;
 
     return SUCCESS;
 
@@ -405,40 +399,45 @@ static int device_release( struct inode* inode, struct file*  file){
 
 static ssize_t device_read( struct file* file, char __user* buffer, size_t length, loff_t* offset ){
 
-    struct node* root = file->private_data->channels;
-    int channel_id = file->private_data->last_channel;
+    struct node* channel;
+    int i;
+    struct node* root;
+    int channel_id;
+    minor *minor_file;
+    char *the_message;
+
+    minor_file = (minor *)(file->private_data);
+    
+    root = minor_file->channels;
+    channel_id = minor_file->last_channel;
 
     if(channel_id <= 0 || buffer == NULL){//no channel has been set on the file descriptor or user buffer invalid
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
-    struct node* channel = search(channel_id, root);
+    
+    channel = search_in_the_rbt(channel_id, root);
 
     if(channel == NULL){
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
     if(channel->message_len == 0){//no message exists on the channel
-        errno = EWOULDBLOCK;
-        return -1;
+        return -EWOULDBLOCK;
     }
 
 
     if(length <=0 || length > 128 || length < channel->message_len){
-        errno = ENOSPC;
-        return -1;
+        return -ENOSPC;
     }
 
-
-    int i = 0;
+    i = 0;
+    the_message = channel->message;
 
     while(i<length){
 
-        if (put_user(channel->message[i], buffer[i]) != 0) {//check if put_user failed
-			errno = EFAULT;
-            return -1;
+        if (put_user(the_message[i], buffer+i) != 0) {//check if put_user failed
+            return -EFAULT;
 		}
         i++;
 
@@ -449,41 +448,43 @@ static ssize_t device_read( struct file* file, char __user* buffer, size_t lengt
 
 static ssize_t device_write( struct file* file, const char __user* buffer, size_t length, loff_t* offset){
 
-   
+    struct node* root;
+    int channel_id;
+    node* channel;
+    minor *minor_file;
+    char *safe_buff;
+    int i = 0;
 
-    struct node* root = file->private_data->channels;
-    int channel_id = file->private_data->last_channel;
+    minor_file = (minor *)(file->private_data);
+
+    channel_id = minor_file->last_channel;
+    root = minor_file->channels;
 
     if(channel_id <= 0 || buffer == NULL){//no channel has been set on the file descriptor or user buffer invalid
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
     if(length <=0 || length > 128){
-        errno = EMSGSIZE;
-        return -1;
+        return -EMSGSIZE;
     }
 
-    char *safe_buff = kmalloc(length * sizeof(char *), GFP_KERNEL);
+    safe_buff = kmalloc(length * sizeof(char *), GFP_KERNEL);
 
     if(safe_buff == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
-    struct node* channel = search(channel_id, root);
+    channel = search_in_the_rbt(channel_id, root);
 
     if(channel == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
-    int i=0;
+    i=0;
 
     while(i<length){
-        if(get_user(safe_buff[i], buffer[i]) != 0){
-            errno = EFAULT;
-            return -1;
+        if(get_user(safe_buff[i], &buffer[i]) != 0){
+            return -EFAULT;
         }
     }
 
@@ -494,15 +495,14 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
     channel->message = kmalloc(length * sizeof(char *), GFP_KERNEL);
 
     if(channel->message == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
 
     while(i<length){
 
         //fix to also check message vlidate only if valid then change(1)
-        channel->message[i] = safe_buffer[i];
+        channel->message[i] = safe_buff[i];
         i++;
 
     }//end of while
@@ -516,30 +516,32 @@ static ssize_t device_write( struct file* file, const char __user* buffer, size_
 }
 
 
-static long device_ioctl( struct   file* file,
-                          unsigned int   ioctl_command_id,
-                          unsigned long  ioctl_param )
-{
+static long device_ioctl( struct   file* file, unsigned int ioctl_command_id, unsigned long  ioctl_param){
+
+    minor *minor_file;
+    node *channel;
+
+    minor_file = (minor *)(file->private_data);
+
+
     if(ioctl_command_id != MSG_SLOT_CHANNEL){
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
     if(ioctl_param <=0){
-        errno = EINVAL;
-        return -1;
+        return -EINVAL;
     }
 
-    if(search(ioctl_param, file->private_data->channels) != NULL){//there is already a node in the tree with this id
-        file->private_data->last_channel = ioctl_param;
+    if(search_in_the_rbt(ioctl_param, minor_file->channels) != NULL){//there is already a node in the tree with this id
+        minor_file->last_channel = ioctl_param;
         return SUCCESS;
     }
 
-    struct node *channel = kmalloc(sizeof(node), GFP_KERNEL);
+    
+    channel = kmalloc(sizeof(node), GFP_KERNEL);
 
     if(channel == NULL){
-        errno = ENOMEM;
-        return -1;
+        return -ENOMEM;
     }
 
     channel->r = NULL;
@@ -549,21 +551,36 @@ static long device_ioctl( struct   file* file,
     channel->message_len = 0;
     channel->c = 1;
 
-    file->private_data->last_channel = ioctl_param;
+    minor_file->last_channel = ioctl_param;
 
-    file->private_data->channels = bst(file->private_data->channels, channel);
+    minor_file->channels = bst(minor_file->channels, channel);
 
-    fixup(file->private_data->channels, channel);//check for sure if after that file->private_data->channels point to the root
+    fixup(minor_file->channels, channel);//check for sure if after that file->private_data->channels point to the root
 
     return SUCCESS;
 
 }
 
+// This structure will hold the functions to be called
+// when a process does something to the device we created
+struct file_operations Fops =
+{
+  .owner	      = THIS_MODULE, // Required for correct count of module usage. This prevents the module from being removed while used.
+  .read           = device_read,
+  .write          = device_write,
+  .unlocked_ioctl = device_ioctl,
+  .open           = device_open,
+  .release        = device_release,
+};
+
 
 // Initialize the module - Register the character device
 static int __init simple_init(void){
 
-    int rc = -1;
+    int rc;
+    int i;
+
+    rc = -1;
 
     // init dev struct
 
@@ -577,13 +594,13 @@ static int __init simple_init(void){
         return rc;
     }//end of if
 
-    for(int i =0; i <257; i++){
-        if(arr_of_minor[i] != NULL){
+    for(i =0; i <257; i++){
+        if(arr_of_minor[i].minor_pointer != NULL){
 
-            realese_tree(arr_of_minor[i]->minor_pointer->channels);//sending the root of each tree for each minor number that exist
+            realese_tree(arr_of_minor[i].minor_pointer->channels);//sending the root of each tree for each minor number that exist
 
-            kfree(arr_of_minor[i]);
-            arr_of_minor[i] = NULL;
+            kfree(arr_of_minor[i].minor_pointer);
+            arr_of_minor[i].minor_pointer = NULL;
 
         }//end of if
 
@@ -596,20 +613,23 @@ static int __init simple_init(void){
 //---------------------------------------------------------------
 static void __exit simple_cleanup(void)
 {
-    
 
-    for(int i =0; i<257; i++){
+    int i;    
+
+    for(i =0; i<257; i++){
         
-        if(arr_of_minor[i] != NULL){
+        if(arr_of_minor[i].minor_pointer != NULL){
 
-            realese_tree(arr_of_minor[i]->minor_pointer->channels);//sending the root of each tree for each minor number that exist
+            realese_tree(arr_of_minor[i].minor_pointer->channels);//sending the root of each tree for each minor number that exist
 
-            kfree(arr_of_minor[i]);
-            arr_of_minor[i] = NULL;
+            kfree(arr_of_minor[i].minor_pointer);
+            arr_of_minor[i].minor_pointer = NULL;
 
         }//end of if
 
     }//end of for
+
+    //kfree(arr_of_minor);
 
     // Unregister the device
     // Should always succeed
