@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }*/ // this should be checked in the device_write function
 
-    file_des_to_write = open(argv[1], O_WRONLY);
+    file_des_to_write = open(argv[1], O_RDWR);
 
     if(file_des_to_write == -1){//error in open file
         fprintf( stderr, "%s\n", strerror(errno));

@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }//end of if
 
-    file_des_to_read = open(argv[1], O_RDONLY);
+    file_des_to_read = open(argv[1], O_RDWR);
 
 
     if(file_des_to_read == -1){//error in open file

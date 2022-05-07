@@ -40,13 +40,13 @@ typedef struct rbNode {
 
 typedef struct minor{
   int minor_num;//the number of the channel id
-  struct rbNode *channels;//all the channels connected to this minor number
+  struct rbNode *channel;//all the channels connected to this minor number
   int last_channel;//the last channel inserted by device_ioctl
 }minor;
 
 
 typedef struct global_root{
-    struct minor* minor_pointer;
+    struct rbNode* tree_root;
     //int counter; //should add? it's neccerey if there is several files with the same minor num, that way device_release with not make bug, only add if it make a bug
 }global_root;//arr_of_minor[257];
 
